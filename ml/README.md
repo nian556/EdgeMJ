@@ -19,7 +19,10 @@ ml/
 │   ├── classes.py           ← 42 類定義與別名對照
 │   ├── import_dataset.py    ← 把下載的資料集轉成我們的類別編號
 │   ├── check_dataset.py     ← 統計每種牌的數量、檢查錯誤
-│   └── train.py             ← 訓練 YOLOv8n 模型
+│   ├── train.py             ← 訓練 YOLOv8n 模型
+│   ├── export_tflite.py     ← 轉成手機用的 .tflite
+│   └── evaluate.py          ← 比較轉檔前後準確度（也是 App 解讀輸出的參考）
+├── exports/                 ← 轉好的 .tflite（不進版控）
 ├── weights/                 ← 預訓練權重（不進版控）
 ├── runs/                    ← 訓練結果（不進版控）
 ├── .venv/                   ← 訓練專用的 Python 環境（不進版控）
@@ -135,6 +138,43 @@ ml\.venv\Scripts\python ml/scripts/train.py --resume      # 中斷後繼續
 - 連續 20 輪沒進步會自動提早結束
 - 結果在 `ml/runs/mahjong-yolov8n/`，最好的模型是 `weights/best.pt`
 - 不做左右／上下翻轉：翻轉後的「萬」「東」是鏡像字，現實中不存在
+
+## 轉成手機用的 .tflite
+
+```
+ml\.venv\Scripts\python ml/scripts/export_tflite.py --int8
+```
+
+輸出到 `ml/exports/`（不進版控）：
+
+| 檔案 | 大小 | 說明 |
+|------|------|------|
+| `edgemj_float32.tflite` | 約 12 MB | 原始精度 |
+| `edgemj_float16.tflite` | 約 6 MB | 建議手機使用 |
+| `edgemj_int8.tflite` | 約 3 MB | 最小最快（`--int8` 才會產生） |
+| `labels.txt` | — | 類別名稱，順序 = 類別編號 |
+
+**為什麼在 Windows 走 SavedModel 路線**：新版 Ultralytics 的 `format="tflite"` 只支援 Linux／macOS，
+`format="saved_model"` 在 Windows 也能用，過程中會一併產生 .tflite。
+
+**為什麼不用 Ultralytics 內建的驗證**：它會把 .tflite 輸出的座標當成 0～1 比例再乘一次 640，
+導致分數錯誤地變成 0%。所以改用 `evaluate.py` 自己解讀輸出，和原始模型用同一套標準比較。
+
+### 模型的輸入與輸出（App 端要照這個格式）
+- **輸入**：`[1, 640, 640, 3]` float32，RGB，數值 0～1；等比例縮放後用灰色 (114) 補邊
+- **輸出**：`[1, 46, 8400]`；46 = 4 個座標 + 42 個類別分數
+  - 座標是**像素**單位的 中心x、中心y、寬、高（以 640×640 輸入為基準）
+  - 後處理：取每個候選框最高的類別分數 → 過濾低分（例如 < 0.25）→ NMS 去除重疊框
+- 完整的參考實作在 `scripts/evaluate.py`
+
+### 第一版模型成績（驗證集 449 張）
+
+| 模型 | 精確率 | 召回率 | F1 |
+|------|--------|--------|----|
+| best.pt（原始） | 92.4% | 95.9% | 94.1% |
+| float32.tflite | 92.4% | 95.9% | 94.1% |
+| float16.tflite | 92.3% | 95.9% | 94.1% |
+| int8.tflite | 92.6% | 95.7% | 94.1% |
 
 ## 自己拍照與標註（提升台灣牌準確度的關鍵）
 

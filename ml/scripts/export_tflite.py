@@ -45,9 +45,11 @@ def main() -> None:
 
     print(f"轉檔中：{args.weights}")
     model = YOLO(str(args.weights))
+    # 注意：新版 Ultralytics 的 format="tflite"（LiteRT）只支援 Linux / macOS，
+    # 所以改用 "saved_model"：它在 Windows 也能用，轉檔過程會一併產生 .tflite 檔。
     exported = Path(
         model.export(
-            format="tflite",
+            format="saved_model",
             imgsz=args.imgsz,
             int8=args.int8,
             data=str(DATA_YAML),  # int8 量化需要用部分訓練照片校正
@@ -58,12 +60,15 @@ def main() -> None:
     # ── 把產生的 .tflite 整理到 ml/exports/ ──
     EXPORT_DIR.mkdir(exist_ok=True)
     results: list[Path] = []
+    search_dir = exported if exported.is_dir() else exported.parent
     for kind in ("float32", "float16", "int8"):
-        found = sorted(exported.parent.glob(f"*_{kind}.tflite"))
+        found = sorted(search_dir.rglob(f"*_{kind}.tflite"))
         if found:
             dst = EXPORT_DIR / f"edgemj_{kind}.tflite"
             shutil.copy2(found[0], dst)
             results.append(dst)
+    if not results:
+        sys.exit(f"轉檔失敗：在 {search_dir} 找不到任何 .tflite 檔")
 
     names = [model.names[i] for i in sorted(model.names)]
     (EXPORT_DIR / "labels.txt").write_text("\n".join(names) + "\n", encoding="utf-8")
@@ -76,18 +81,20 @@ def main() -> None:
     if args.no_val:
         return
 
-    # ── 用驗證集測試每個 .tflite 的準確度（以 CPU 執行，模擬手機上的情況）──
+    # ── 驗證：.pt 與各個 .tflite 用同一套標準比較 ──
+    # 註：不用 Ultralytics 內建的 val()，因為它會把 .tflite 的座標當成 0~1 比例再乘一次圖片大小，
+    #     而這裡轉出的 .tflite 輸出本來就是像素座標，會導致分數錯誤地變成 0。
+    from evaluate import evaluate_pt, evaluate_tflite
+
     print("\n驗證轉檔後的準確度（用 CPU 跑，需要幾分鐘）...")
-    scores = {}
+    rows = [("原始模型 best.pt", evaluate_pt(args.weights, args.imgsz))]
     for r in results:
-        metrics = YOLO(str(r), task="detect").val(
-            data=str(DATA_YAML), imgsz=args.imgsz, device="cpu", batch=1,
-            plots=False, verbose=False, project=str(ML_ROOT / "runs"), name="val-tflite",
-        )
-        scores[r.name] = metrics.box.map50
-    print("\n轉檔後準確度（mAP50）：")
-    for name, s in scores.items():
-        print(f"  {name:<24} {s * 100:5.1f}%")
+        rows.append((r.name, evaluate_tflite(r, args.imgsz)))
+
+    print(f"\n{'模型':<24}{'精確率':>8}{'召回率':>8}{'F1':>8}")
+    for name, (precision, recall, f1) in rows:
+        print(f"  {name:<22}{precision * 100:7.1f}%{recall * 100:7.1f}%{f1 * 100:7.1f}%")
+    print("（信心門檻 0.25、IoU 0.5；轉檔後的分數和原始模型接近就代表轉檔成功）")
 
 
 if __name__ == "__main__":
