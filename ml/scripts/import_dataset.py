@@ -46,6 +46,17 @@ def find_splits(src: Path) -> list[tuple[str, Path, Path]]:
     return found
 
 
+def to_box(coords: list[str]) -> str:
+    """把座標統一成方框（中心x 中心y 寬 高）。
+    有些資料集混用多邊形標註（x1 y1 x2 y2 ...），這裡取外框轉成方框。"""
+    if len(coords) == 4:
+        return " ".join(coords)
+    xs = [float(v) for v in coords[0::2]]
+    ys = [float(v) for v in coords[1::2]]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    return f"{(x0 + x1) / 2:.6f} {(y0 + y1) / 2:.6f} {x1 - x0:.6f} {y1 - y0:.6f}"
+
+
 def build_mapping(source_names: list[str], custom: dict[str, str | None]) -> dict[int, int | None]:
     """來源類別編號 → 我們的類別編號（None 代表丟掉）。對不到的不放進結果。"""
     custom_norm = {normalize(k): v for k, v in custom.items()}
@@ -128,7 +139,7 @@ def main() -> None:
                         dropped += 1
                         continue
                     counter[target] += 1
-                    new_lines.append(" ".join([str(target), *parts[1:]]))
+                    new_lines.append(f"{target} {to_box(parts[1:])}")
             image_counts[split] += 1
             if not args.dry_run:
                 out_img.mkdir(parents=True, exist_ok=True)

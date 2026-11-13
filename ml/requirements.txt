@@ -1,2 +1,15 @@
+# EdgeMJ 機器學習套件
+#
+# 安裝方式（在專案根目錄）：
+#   python -m venv ml/.venv
+#   ml\.venv\Scripts\python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   ml\.venv\Scripts\python -m pip install -r ml/requirements.txt
+#
+# 第一行的 PyTorch 要從官方 GPU 版網址安裝，才能使用 NVIDIA 顯示卡加速。
+
 # 階段二：資料集工具
 pyyaml>=6.0
+pillow>=10.0
+
+# 階段三：訓練
+ultralytics>=8.3

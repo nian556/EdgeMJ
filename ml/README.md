@@ -18,7 +18,11 @@ ml/
 ├── scripts/
 │   ├── classes.py           ← 42 類定義與別名對照
 │   ├── import_dataset.py    ← 把下載的資料集轉成我們的類別編號
-│   └── check_dataset.py     ← 統計每種牌的數量、檢查錯誤
+│   ├── check_dataset.py     ← 統計每種牌的數量、檢查錯誤
+│   └── train.py             ← 訓練 YOLOv8n 模型
+├── weights/                 ← 預訓練權重（不進版控）
+├── runs/                    ← 訓練結果（不進版控）
+├── .venv/                   ← 訓練專用的 Python 環境（不進版控）
 └── requirements.txt
 ```
 
@@ -116,6 +120,21 @@ ml/
 ```
 python ml/scripts/import_dataset.py ml/raw/merged --name merged --mapping ml/mappings/mahjong-tiles-merged.json
 ```
+
+## 訓練模型
+
+所有指令都在專案根目錄執行，並使用 `ml\.venv` 裡的 Python：
+
+```
+ml\.venv\Scripts\python ml/scripts/train.py --epochs 3    # 先跑 3 輪，確認一切正常
+ml\.venv\Scripts\python ml/scripts/train.py               # 正式訓練（預設 100 輪）
+ml\.venv\Scripts\python ml/scripts/train.py --resume      # 中斷後繼續
+```
+
+- 會自動使用 NVIDIA 顯示卡；顯示卡記憶體不足時加上 `--batch 8`
+- 連續 20 輪沒進步會自動提早結束
+- 結果在 `ml/runs/mahjong-yolov8n/`，最好的模型是 `weights/best.pt`
+- 不做左右／上下翻轉：翻轉後的「萬」「東」是鏡像字，現實中不存在
 
 ## 自己拍照與標註（提升台灣牌準確度的關鍵）
 
