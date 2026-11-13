@@ -5,7 +5,7 @@
 ## 開發進度
 
 - [x] 階段一：麻將聽牌／胡牌判定演算法（純 Dart）＋單元測試
-- [ ] 階段二：資料集資料夾結構與 `data.yaml`
+- [x] 階段二：資料集資料夾結構與 `data.yaml`（詳見 [ml/README.md](ml/README.md)）
 - [ ] 階段三：YOLOv8n 訓練與 TFLite 轉檔腳本
 
 ## 第一次使用

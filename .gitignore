@@ -13,8 +13,13 @@ pubspec.lock
 .vscode/
 *.iml
 
-# 之後階段二、三的大型檔案（資料集與模型權重）不進版控
-datasets/**/images/
-datasets/**/labels/
+# 階段二、三的大型檔案（資料集與模型權重）不進版控，只保留資料夾結構
+ml/datasets/**/images/*/*
+ml/datasets/**/labels/*/*
+!ml/datasets/**/.gitkeep
+ml/datasets/**/*.cache
+ml/raw/*
+!ml/raw/.gitkeep
 runs/
 *.pt
+__pycache__/
