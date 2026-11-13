@@ -29,7 +29,7 @@ void main() {
 
     await tester.tap(find.text('日本牌'));
     await tester.pump();
-    expect(find.text('聽：中（七對子）'), findsOneWidget);
+    expect(find.text('聽：白（七對子）'), findsOneWidget);
   });
 
   testWidgets('日本牌輸入 16 張會顯示錯誤', (tester) async {
