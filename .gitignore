@@ -20,6 +20,13 @@ ml/datasets/**/labels/*/*
 ml/datasets/**/*.cache
 ml/raw/*
 !ml/raw/.gitkeep
+# 自己拍的台灣牌標註（人工標的，要備份；照片 tw_mj/ 不進版控）
+!ml/raw/tw_mj_labels/
+tw_mj/
+# export_tw_dataset.py 自動產生、含本機絕對路徑的檔案（可隨時重新產生）
+ml/datasets/mahjong_tw/
+ml/datasets/finetune_*.txt
+ml/datasets/mahjong_finetune.yaml
 runs/
 *.pt
 __pycache__/

@@ -29,7 +29,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="訓練 EdgeMJ 麻將辨識模型")
-    p.add_argument("--model", default="yolov8n.pt", help="起始權重（預設 yolov8n.pt，最小最快，適合手機）")
+    p.add_argument("--data", default=str(DATA_YAML), help="資料集設定檔（預設 ml/datasets/mahjong/data.yaml；補訓練用 mahjong_finetune.yaml）")
+    p.add_argument("--model", default="yolov8n.pt", help="起始權重（預設 yolov8n.pt；補訓練時指定舊模型的 best.pt）")
     p.add_argument("--epochs", type=int, default=100, help="訓練幾輪（預設 100）")
     p.add_argument("--imgsz", type=int, default=640, help="訓練圖片大小（預設 640）")
     p.add_argument("--batch", type=int, default=16, help="每批幾張（顯示卡記憶體不足時調小；-1 = 自動）")
@@ -69,8 +70,9 @@ def main() -> None:
         YOLO(str(last)).train(resume=True)
         return
 
-    if not DATA_YAML.exists():
-        sys.exit(f"找不到資料集設定檔：{DATA_YAML}")
+    data_yaml = Path(args.data)
+    if not data_yaml.exists():
+        sys.exit(f"找不到資料集設定檔：{data_yaml}")
 
     # 預訓練權重放在 ml/weights/，安裝時已下載；若不存在會自動下載一次
     WEIGHTS_DIR.mkdir(exist_ok=True)
@@ -80,7 +82,7 @@ def main() -> None:
     model = YOLO(str(model_path))
 
     model.train(
-        data=str(DATA_YAML),
+        data=str(data_yaml),
         epochs=args.epochs,
         imgsz=args.imgsz,
         batch=args.batch,

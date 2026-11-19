@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台灣牌標註</title>
+<style>
+  :root { --bg:#16191d; --panel:#20252b; --line:#353c45; --text:#e8eaed; --dim:#9aa3ad;
+          --ok:#4ade80; --warn:#fbbf24; --sel:#38bdf8; --mask:#f472b6; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text);
+              font:14px/1.4 "Microsoft JhengHei","Noto Sans TC",sans-serif; }
+  #app { display:grid; grid-template-columns:190px minmax(0,1fr) 300px; height:100%; }
+  aside { background:var(--panel); overflow:auto; padding:10px; }
+  #left { border-right:1px solid var(--line); }
+  #right { border-left:1px solid var(--line); }
+  h1 { font-size:15px; margin:0 0 6px; }
+  h2 { font-size:12px; color:var(--dim); margin:12px 0 4px; font-weight:500; }
+  #progress { color:var(--dim); margin-bottom:6px; }
+  #bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+  #bar i { display:block; height:100%; width:0; background:var(--ok); }
+  select,button { font:inherit; color:var(--text); background:#2b323a; border:1px solid var(--line);
+                  border-radius:5px; padding:5px 7px; cursor:pointer; }
+  button:hover { background:#36404a; }
+  select { width:100%; margin-bottom:8px; }
+  .row { display:block; width:100%; text-align:left; margin-bottom:3px; padding:4px 6px;
+         background:none; border-color:transparent; font-size:12px; }
+  .row.on { background:#2f3e4c; border-color:var(--sel); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--dim); }
+  .done .dot { background:var(--ok); } .skip .dot { background:#6b7280; }
+  .num { float:right; color:var(--warn); }
+  main { display:grid; grid-template-rows:auto minmax(0,1fr) 112px; min-width:0; }
+  #top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:7px 10px; border-bottom:1px solid var(--line); }
+  #name { font-weight:600; } #msg { color:var(--dim); margin-left:auto; }
+  #primary { background:#166534; border-color:#22c55e; font-weight:600; }
+  #primary:hover { background:#15803d; }
+  #stage { position:relative; min-height:0; overflow:hidden; }
+  canvas#view { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; }
+  #strip { display:flex; gap:4px; overflow-x:auto; padding:5px; border-top:1px solid var(--line); background:var(--panel); }
+  .crop { flex:none; width:54px; padding:0; background:#111; border:2px solid transparent; border-radius:4px; text-align:center; font-size:11px; }
+  .crop canvas { display:block; width:50px; height:58px; }
+  .crop.check { border-color:var(--warn); } .crop.on { border-color:var(--sel); }
+  .tiles { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+  .tiles button { padding:5px 0; font-size:13px; }
+  .tiles button.on { background:#075985; border-color:var(--sel); }
+  #maskBtn { width:100%; margin-top:10px; color:var(--mask); }
+  #maskBtn.on { background:#5b2147; border-color:var(--mask); }
+  ul { margin:4px 0 0; padding-left:16px; color:var(--dim); font-size:12px; }
+  li { margin-bottom:3px; } b { color:var(--text); font-weight:600; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="left">
+    <h1>台灣牌標註</h1>
+    <div id="progress"></div><div id="bar"><i></i></div>
+    <select id="filter" aria-label="顯示哪些照片">
+      <option value="todo">未完成</option><option value="all">全部</option>
+      <option value="done">已完成</option><option value="skip">已略過</option>
+    </select>
+    <div id="list"></div>
+  </aside>
+  <main>
+    <div id="top">
+      <span id="name"></span>
+      <button id="prev" title="左方向鍵">上一張</button>
+      <button id="next" title="右方向鍵">下一張</button>
+      <button id="skip">略過這張</button>
+      <button id="primary" title="Enter">完成，下一張</button>
+      <span id="msg"></span>
+    </div>
+    <div id="stage"><canvas id="view"></canvas></div>
+    <div id="strip"></div>
+  </main>
+  <aside id="right">
+    <h2>把選到的框改成</h2>
+    <div id="palette"></div>
+    <button id="maskBtn" title="X 鍵">遮蔽區（太遠、看不清的牌）</button>
+    <h2>操作</h2>
+    <ul>
+      <li><b>改牌</b>：點框，再點上面的牌，或打代碼，例如 <b>4z</b> = 北</li>
+      <li><b>下一個框</b>：Tab</li>
+      <li><b>一次選多個</b>：按住 Shift 拖拉</li>
+      <li><b>新增框</b>：在空白處拖拉</li>
+      <li><b>移動／調整</b>：拖框內／拖四個角</li>
+      <li><b>刪除</b>：Delete　<b>復原</b>：Ctrl+Z</li>
+      <li><b>放大</b>：滾輪　<b>移動畫面</b>：右鍵拖拉</li>
+      <li><b>隱藏文字</b>：H</li>
+      <li>代碼：m 萬、p 筒、s 條；1z～7z 東南西北中發白；1f～8f 春夏秋冬梅蘭菊竹</li>
+      <li>遠處牌堆不用一張張標，用遮蔽區框起來就好</li>
+    </ul>
+  </aside>
+</div>
+<script>
+'use strict';
+// ── 基本資料 ──
+const $ = id => document.getElementById(id);
+const canvas = $('view'), ctx = canvas.getContext('2d');
+let meta, items = [], cur = null, image = null;
+let selected = new Set(), undoStack = [], lastCls = 0, hideText = false;
+let view = {s:1, x:0, y:0}, drag = null, typed = '', typedTimer = 0;
+let saveTimer = 0, saveChain = Promise.resolve(), stripTimer = 0, loadToken = 0;
+const HANDLE = 9, MIN_BOX = 8;
+
+const nameOf = c => c === meta.mask ? '遮蔽' : meta.names[c];
+const size = () => ({w: canvas.clientWidth, h: canvas.clientHeight});
+const toScreen = (nx, ny) => [view.x + nx * image.naturalWidth * view.s, view.y + ny * image.naturalHeight * view.s];
+const toNorm = (sx, sy) => [(sx - view.x) / (image.naturalWidth * view.s), (sy - view.y) / (image.naturalHeight * view.s)];
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const say = t => { $('msg').textContent = t; };
+const pos = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+const snapshot = () => JSON.stringify(cur.boxes);
+
+// ── 伺服器溝通 ──
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} :
+    {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '連線失敗');
+  return data;
+}
+// 依序存檔，避免舊內容蓋掉新內容
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = 0;
+  if (!cur) return saveChain;
+  const stem = cur.stem, body = {status: cur.status, boxes: cur.boxes.map(b => ({...b}))};
+  saveChain = saveChain.then(() => api('/api/item/' + encodeURIComponent(stem), body)).then(r => {
+    const it = items.find(i => i.stem === stem);
+    if (it) { it.status = r.status; it.count = r.count; }
+    say('已存檔'); renderList();
+  }).catch(e => say('存檔失敗：' + e.message + '，請確認工具視窗還開著'));
+  return saveChain;
+}
+function touched() {
+  say('存檔中…'); clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 350);
+  draw(); queueStrip(); renderPalette();
+}
+function mutate(fn) { undoStack.push(snapshot()); fn(); touched(); }
+
+// ── 照片清單 ──
+function renderList() {
+  const done = items.filter(i => i.status === 'done').length, skip = items.filter(i => i.status === 'skip').length;
+  const total = items.length - skip;
+  $('progress').textContent = `完成 ${done} / ${total} 張`;
+  $('bar').firstChild.style.width = (total ? done / total * 100 : 0) + '%';
+  const f = $('filter').value, box = $('list'), top = box.scrollTop;
+  box.replaceChildren(...items.filter(i => f === 'all' || i.status === f || (cur && i.stem === cur.stem)).map(i => {
+    const b = document.createElement('button');
+    b.className = `row ${i.status}` + (cur && i.stem === cur.stem ? ' on' : '');
+    const dot = document.createElement('span'); dot.className = 'dot';
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = i.priority || '';
+    num.title = '需要特別確認的框數';
+    b.append(dot, i.stem.replace('S__', '').replace('_0', ''), num);
+    b.onclick = () => open(i.stem);
+    return b;
+  }));
+  box.scrollTop = top;
+}
+
+// ── 開啟照片 ──
+async function open(stem) {
+  if (saveTimer) saveNow();
+  await saveChain;
+  const token = ++loadToken;
+  say('載入中…');
+  const doc = await api('/api/item/' + encodeURIComponent(stem));
+  const img = new Image();
+  img.src = '/img/' + encodeURIComponent(stem);
+  await img.decode();
+  if (token !== loadToken) return; // 使用者已經切到別張
+  cur = {...doc, stem}; image = img; selected = new Set(); undoStack = []; drag = null;
+  $('name').textContent = stem.replace('S__', '').replace('_0', '') + (doc.note ? `（${doc.note}）` : '');
+  $('skip').textContent = cur.status === 'skip' ? '取消略過' : '略過這張';
+  fit(); renderList(); renderPalette(); renderStrip(); say('');
+  document.querySelector('.row.on')?.scrollIntoView({block:'nearest'});
+}
+function step(delta) {
+  const i = items.findIndex(x => x.stem === cur.stem);
+  const n = items[i + delta]; if (n) open(n.stem);
+}
+function nextTodo() {
+  const i = items.findIndex(x => x.stem === cur.stem);
+  return [...items.slice(i + 1), ...items.slice(0, i)].find(x => x.status === 'todo');
+}
+async function finish() {
+  cur.status = 'done'; const stem = cur.stem;
+  items.find(i => i.stem === stem).status = 'done';
+  await saveNow();
+  const n = nextTodo();
+  if (n) open(n.stem); else { renderList(); say('全部完成了！'); }
+}
+async function toggleSkip() {
+  cur.status = cur.status === 'skip' ? 'todo' : 'skip';
+  items.find(i => i.stem === cur.stem).status = cur.status;
+  $('skip').textContent = cur.status === 'skip' ? '取消略過' : '略過這張';
+  await saveNow();
+  if (cur.status === 'skip') { const n = nextTodo(); if (n) open(n.stem); }
+}
+
+// ── 畫面 ──
+function fit() {
+  const {w, h} = size(), W = image.naturalWidth, H = image.naturalHeight;
+  view.s = Math.min(w / W, h / H); view.x = (w - W * view.s) / 2; view.y = (h - H * view.s) / 2;
+  draw();
+}
+function boxColor(b, on) { return on ? '#38bdf8' : b.cls === meta.mask ? '#f472b6' : b.check ? '#fbbf24' : '#4ade80'; }
+function draw() {
+  const dpr = devicePixelRatio || 1, {w, h} = size();
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  if (!image) return;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, view.x, view.y, image.naturalWidth * view.s, image.naturalHeight * view.s);
+  ctx.font = '600 13px "Microsoft JhengHei",sans-serif'; ctx.textBaseline = 'top';
+  cur.boxes.forEach((b, i) => {
+    const on = selected.has(i), [x1, y1] = toScreen(b.x1, b.y1), [x2, y2] = toScreen(b.x2, b.y2), c = boxColor(b, on);
+    if (b.cls === meta.mask) { ctx.fillStyle = 'rgba(244,114,182,.28)'; ctx.fillRect(x1, y1, x2 - x1, y2 - y1); }
+    ctx.strokeStyle = c; ctx.lineWidth = on ? 3 : 2; ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    if (!hideText) {
+      const t = nameOf(b.cls), tw = ctx.measureText(t).width + 6, ty = Math.max(0, y1 - 18);
+      ctx.fillStyle = c; ctx.fillRect(x1, ty, tw, 18);
+      ctx.fillStyle = '#10151a'; ctx.fillText(t, x1 + 3, ty + 2);
+    }
+    if (on && selected.size === 1) {
+      ctx.fillStyle = c;
+      for (const [hx, hy] of [[x1,y1],[x2,y1],[x1,y2],[x2,y2]]) ctx.fillRect(hx - 5, hy - 5, 10, 10);
+    }
+  });
+  if (drag && (drag.kind === 'band' || drag.kind === 'new')) {
+    ctx.setLineDash([6, 4]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(drag.sx, drag.sy, drag.ex - drag.sx, drag.ey - drag.sy); ctx.setLineDash([]);
+  }
+}
+const readingOrder = () => cur.boxes.map((b, i) => i).sort((a, b) => {
+  const A = cur.boxes[a], B = cur.boxes[b], h = (A.y2 - A.y1 + B.y2 - B.y1) / 4;
+  return Math.abs(A.y1 - B.y1) > h ? A.y1 - B.y1 : A.x1 - B.x1;
+});
+function queueStrip() { clearTimeout(stripTimer); stripTimer = setTimeout(renderStrip, 80); }
+function renderStrip() {
+  const out = readingOrder().map(i => {
+    const b = cur.boxes[i], W = image.naturalWidth, H = image.naturalHeight;
+    const el = document.createElement('button');
+    el.className = 'crop' + (b.check ? ' check' : '') + (selected.has(i) ? ' on' : '');
+    const c = document.createElement('canvas'); c.width = 100; c.height = 116;
+    const sx = b.x1 * W, sy = b.y1 * H, sw = (b.x2 - b.x1) * W, sh = (b.y2 - b.y1) * H;
+    const k = Math.min(100 / sw, 116 / sh), g = c.getContext('2d');
+    g.drawImage(image, sx, sy, sw, sh, (100 - sw * k) / 2, (116 - sh * k) / 2, sw * k, sh * k);
+    el.append(c, nameOf(b.cls));
+    el.onclick = () => selectOnly(i);
+    return el;
+  });
+  $('strip').replaceChildren(...out);
+}
+function renderPalette() {
+  const cls = new Set([...selected].map(i => cur.boxes[i]?.cls));
+  document.querySelectorAll('[data-cls]').forEach(b => b.classList.toggle('on', cls.has(+b.dataset.cls)));
+  $('maskBtn').classList.toggle('on', cls.has(meta.mask));
+}
+function selectOnly(i) { selected = new Set([i]); afterSelect(); }
+function afterSelect() {
+  draw(); renderPalette();
+  document.querySelectorAll('.crop').forEach((el, n) => el.classList.toggle('on', selected.has(readingOrder()[n])));
+  document.querySelector('.crop.on')?.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+
+// ── 編輯動作 ──
+function setClass(c) {
+  if (!cur) return;
+  lastCls = c === meta.mask ? lastCls : c;
+  if (!selected.size) { say(`新框會用「${nameOf(c)}」`); return; }
+  mutate(() => selected.forEach(i => { cur.boxes[i].cls = c; cur.boxes[i].check = false; }));
+}
+function removeSelected() {
+  if (!selected.size) return;
+  mutate(() => { cur.boxes = cur.boxes.filter((b, i) => !selected.has(i)); selected = new Set(); });
+}
+function undo() {
+  const s = undoStack.pop(); if (!s) return;
+  cur.boxes = JSON.parse(s); selected = new Set(); touched();
+}
+function tabBox(delta) {
+  const o = readingOrder(); if (!o.length) return;
+  const at = selected.size === 1 ? o.indexOf([...selected][0]) : -1;
+  selectOnly(o[(at + delta + o.length) % o.length]);
+}
+function boxAt(x, y) { // 重疊時選面積最小的
+  let hit = -1, area = Infinity;
+  cur.boxes.forEach((b, i) => {
+    const [x1, y1] = toScreen(b.x1, b.y1), [x2, y2] = toScreen(b.x2, b.y2), a = (x2 - x1) * (y2 - y1);
+    if (x >= x1 && x <= x2 && y >= y1 && y <= y2 && a < area) { hit = i; area = a; }
+  });
+  return hit;
+}
+function cornerAt(x, y) {
+  if (selected.size !== 1) return null;
+  const i = [...selected][0], b = cur.boxes[i];
+  for (const [kx, ky] of [['x1','y1'],['x2','y1'],['x1','y2'],['x2','y2']]) {
+    const [sx, sy] = toScreen(b[kx], b[ky]);
+    if (Math.abs(sx - x) <= HANDLE && Math.abs(sy - y) <= HANDLE) return {i, kx, ky};
+  }
+  return null;
+}
+
+// ── 滑鼠 ──
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('mousedown', e => {
+  if (!cur) return;
+  const [x, y] = pos(e), base = {sx:x, sy:y, ex:x, ey:y, before:snapshot()};
+  if (e.button !== 0) { drag = {...base, kind:'pan', vx:view.x, vy:view.y}; return; }
+  if (e.shiftKey) { drag = {...base, kind:'band'}; return; }
+  const c = cornerAt(x, y);
+  if (c) { drag = {...base, kind:'size', ...c}; return; }
+  const hit = boxAt(x, y);
+  if (hit >= 0) {
+    if (!selected.has(hit)) selectOnly(hit);
+    drag = {...base, kind:'move', start:[...selected].map(i => ({i, ...cur.boxes[i]}))};
+    return;
+  }
+  selected = new Set(); afterSelect(); drag = {...base, kind:'new'};
+});
+addEventListener('mousemove', e => {
+  if (!drag) return;
+  const [x, y] = pos(e); drag.ex = x; drag.ey = y;
+  if (drag.kind === 'pan') { view.x = drag.vx + x - drag.sx; view.y = drag.vy + y - drag.sy; }
+  if (drag.kind === 'move') {
+    let dx = (x - drag.sx) / (image.naturalWidth * view.s), dy = (y - drag.sy) / (image.naturalHeight * view.s);
+    for (const s of drag.start) { dx = Math.max(-s.x1, Math.min(1 - s.x2, dx)); dy = Math.max(-s.y1, Math.min(1 - s.y2, dy)); }
+    for (const s of drag.start) Object.assign(cur.boxes[s.i], {x1:s.x1 + dx, x2:s.x2 + dx, y1:s.y1 + dy, y2:s.y2 + dy});
+  }
+  if (drag.kind === 'size') {
+    const [nx, ny] = toNorm(x, y), b = cur.boxes[drag.i];
+    b[drag.kx] = clamp01(nx); b[drag.ky] = clamp01(ny);
+  }
+  draw();
+});
+addEventListener('mouseup', () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  const x1 = Math.min(d.sx, d.ex), x2 = Math.max(d.sx, d.ex), y1 = Math.min(d.sy, d.ey), y2 = Math.max(d.sy, d.ey);
+  if (d.kind === 'band') {
+    selected = new Set();
+    cur.boxes.forEach((b, i) => {
+      const [cx, cy] = toScreen((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2);
+      if (cx >= x1 && cx <= x2 && cy >= y1 && cy <= y2) selected.add(i);
+    });
+    afterSelect();
+  } else if (d.kind === 'new') {
+    if (x2 - x1 >= MIN_BOX && y2 - y1 >= MIN_BOX) {
+      const [a, b] = toNorm(x1, y1), [c, e] = toNorm(x2, y2);
+      const box = {cls:lastCls, x1:clamp01(a), y1:clamp01(b), x2:clamp01(c), y2:clamp01(e), conf:null, check:false};
+      if (box.x2 > box.x1 && box.y2 > box.y1) mutate(() => { cur.boxes.push(box); selected = new Set([cur.boxes.length - 1]); });
+    }
+    draw();
+  } else if (d.kind === 'move' || d.kind === 'size') {
+    if (d.kind === 'size') { // 拖過頭時把左右、上下換回來
+      const b = cur.boxes[d.i];
+      [b.x1, b.x2] = [Math.min(b.x1, b.x2), Math.max(b.x1, b.x2)];
+      [b.y1, b.y2] = [Math.min(b.y1, b.y2), Math.max(b.y1, b.y2)];
+      if (b.x2 - b.x1 < 0.002 || b.y2 - b.y1 < 0.002) { cur.boxes = JSON.parse(d.before); selected = new Set(); draw(); return; }
+    }
+    if (snapshot() !== d.before) { undoStack.push(d.before); touched(); }
+  }
+});
+canvas.addEventListener('wheel', e => {
+  if (!cur) return;
+  e.preventDefault();
+  const [x, y] = pos(e), k = e.deltaY < 0 ? 1.18 : 1 / 1.18, {w, h} = size();
+  const min = Math.min(w / image.naturalWidth, h / image.naturalHeight), s = Math.max(min, Math.min(min * 12, view.s * k));
+  view.x = x - (x - view.x) * s / view.s; view.y = y - (y - view.y) * s / view.s; view.s = s;
+  if (s === min) fit(); else draw();
+}, {passive:false});
+addEventListener('resize', () => { if (cur) fit(); });
+
+// ── 鍵盤 ──
+addEventListener('keydown', e => {
+  if (!cur || e.target.tagName === 'SELECT') return;
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (k === 'tab') { e.preventDefault(); tabBox(e.shiftKey ? -1 : 1); }
+  else if (k === 'enter') { e.preventDefault(); finish(); }
+  else if (k === 'delete' || k === 'backspace') { e.preventDefault(); removeSelected(); }
+  else if (k === 'escape') { selected = new Set(); typed = ''; afterSelect(); }
+  else if (k === 'arrowleft') step(-1);
+  else if (k === 'arrowright') step(1);
+  else if (k === 'h') { hideText = !hideText; draw(); }
+  else if (k === 'x') setClass(meta.mask);
+  else if (/^[1-9]$/.test(k)) {
+    typed = k; say(`代碼：${k}…`); clearTimeout(typedTimer); typedTimer = setTimeout(() => { typed = ''; say(''); }, 1500);
+  } else if (typed && 'mpszf'.includes(k)) {
+    const c = meta.codes.indexOf(typed + k); typed = '';
+    if (c >= 0) setClass(c); else say('沒有這個代碼');
+  }
+});
+
+// ── 啟動 ──
+async function start() {
+  [meta, items] = await Promise.all([api('/api/meta'), api('/api/list')]);
+  const groups = [['萬',0,9],['筒',9,18],['條',18,27],['字',27,34],['花',34,42]];
+  $('palette').replaceChildren(...groups.flatMap(([title, a, b]) => {
+    const h = document.createElement('h2'); h.textContent = title;
+    const g = document.createElement('div'); g.className = 'tiles';
+    for (let c = a; c < b; c++) {
+      const btn = document.createElement('button'); btn.dataset.cls = c; btn.title = meta.codes[c];
+      btn.textContent = title === '字' || title === '花' ? meta.names[c] : meta.names[c][0];
+      btn.onclick = () => setClass(c); g.append(btn);
+    }
+    return [h, g];
+  }));
+  $('maskBtn').onclick = () => setClass(meta.mask);
+  $('prev').onclick = () => step(-1); $('next').onclick = () => step(1);
+  $('primary').onclick = finish; $('skip').onclick = toggleSkip;
+  $('filter').onchange = renderList;
+  // 按鈕點完把焦點還給畫面，Enter 才不會重複按到按鈕
+  document.addEventListener('click', e => { if (e.target.closest('button')) e.target.closest('button').blur(); });
+  addEventListener('beforeunload', () => { if (saveTimer) saveNow(); });
+  const first = items.find(i => i.status === 'todo') || items[0];
+  if (first) await open(first.stem);
+}
+start().catch(e => say('啟動失敗：' + e.message));
+</script>
+</body>
+</html>

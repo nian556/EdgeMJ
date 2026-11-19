@@ -40,6 +40,16 @@ class Detection {
   double get centerY => (top + bottom) / 2;
   double get area => math.max(0, width) * math.max(0, height);
 
+  /// 整個框平移 (dx, dy)，例如把「裁切後的座標」換回「原圖座標」
+  Detection shifted(double dx, double dy) => Detection(
+        left: left + dx,
+        top: top + dy,
+        right: right + dx,
+        bottom: bottom + dy,
+        classId: classId,
+        score: score,
+      );
+
   @override
   String toString() =>
       'Detection(class=$classId, score=${score.toStringAsFixed(2)}, '
