@@ -17,9 +17,9 @@ Future<void> enterHand(WidgetTester tester, String hand) async {
 }
 
 void main() {
-  testWidgets('首頁預設是拍照辨識分頁', (tester) async {
+  testWidgets('首頁預設是即時辨識分頁', (tester) async {
     await tester.pumpWidget(const EdgeMjApp());
-    expect(find.text('EdgeMJ 拍照辨識'), findsOneWidget);
+    expect(find.text('EdgeMJ 即時辨識'), findsOneWidget);
   });
 
   testWidgets('預設是台灣牌，並顯示預設 16 張手牌的聽牌結果', (tester) async {
