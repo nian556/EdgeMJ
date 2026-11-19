@@ -35,3 +35,5 @@ ml/weights/
 ml/exports/
 # 轉檔工具（onnx2tf）自動產生的暫存檔
 calibration_image_sample_data_*.npy
+# Word／Office 開檔時產生的暫存檔
+~$*
