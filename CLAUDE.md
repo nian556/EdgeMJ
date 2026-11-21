@@ -25,8 +25,12 @@
 - 訓練相關：`ml/`（Python，只在 Windows 用；照片 `tw_mj/` 和資料集不進 git）
 - 測試：`flutter test`（目前 74 項全過）
 
-## 目前進度（2026-11-20）
+## 目前進度（2026-11-21）
 - ✅ 拍照辨識版完成；模型已用自拍台灣牌補訓練（台灣牌測試 86.8% → 99.5%）
+- ✅ 第二次補訓練（2026-11-21）：加入 Roboflow 台灣牌 30 張 + 使用者照片 8 張（標註在 `ml/raw/extra_mj_labels/`，
+  匯出用 `ml/scripts/export_extra_dataset.py`）。模型在 `ml/runs/mahjong-tw-finetune2/`，已換進 App。
+  比較結果：台灣牌測試 98.9% → 99.5%、新照片測試 87.3% → 93.0%、原大資料集 mAP50 0.972 → 0.978。
+  換掉的舊模型備份在 Windows 本機 `ml/exports_v2_old/`（不進 git）
 - ✅ Windows 桌面版可編譯執行（`flutter build windows`）
 - 🔶 **即時辨識頁** 剛寫好：用 `camera` 套件不停 `takePicture()` → 辨識，連續兩輪一樣才更新結果。
   Windows 電腦沒有鏡頭，所以另有「照片模擬鏡頭」模式。**還沒在真的鏡頭／手機上測過。**
