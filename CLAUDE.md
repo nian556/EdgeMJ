@@ -55,6 +55,22 @@
 - 在 Mac 上 **不要改模型、不要跑訓練**；改程式就 commit 並 push，Windows 那邊再 `git pull`
 - 測試結果和遇到的問題記在下面「Mac 測試紀錄」，並 push 回 GitHub，Windows 的 Claude 才看得到
 
+## App Store 上架準備清單（2026-11-23 評估，尚未開始）
+App 完全離線、沒有登入／內購／伺服器，所以帳號刪除、IAP、UGC、測試帳號等規定都不適用。要做的事：
+- 🔴 **付費開發者帳號**（Apple Developer Program，每年 99 美元）：免費 Apple ID 不能上架。建議個人帳號（不用 D-U-N-S，但賣家名稱會顯示本名）
+- 🔴 **隱私權政策網址**（HTTPS、能打開）：內容寫「不收集任何資料，照片只在手機上處理」。repo 是私人的，要另外找地方放（例如 Google 協作平台或另開公開 repo）
+- 🔴 **先在 iPhone 實機測過**，確定不閃退（見上面「在 Mac 上要做的事」）
+- 🟡 **藏起「照片模擬鏡頭」按鈕**（`live_scan_page.dart`）：只給 Windows 測試用，手機版會被當成半成品
+- 🟡 **iPad**：目前 `TARGETED_DEVICE_FAMILY = "1,2"`（iPhone＋iPad）。要嘛在 iPad 測版面，要嘛改成只支援 iPhone（`"1"`）
+- 🟡 **Bundle ID**：換成自己的（例如 `com.nian556.edgemj`），第一次上傳後就不能改
+- 🟡 **加密問卷**：`Info.plist` 加 `ITSAppUsesNonExemptEncryption` = NO
+- 🟡 每次上傳 Build 號要遞增（`pubspec.yaml` 的 `version: x.y.z+N`，N 要加 1）；送審前用 TestFlight 裝同一個 Build 測
+- ✅ 相機／相簿權限說明已寫好；隱私權標籤填「不收集資料」
+- 審核備註：寫清楚怎麼用（對手牌拍照、或用手動輸入分頁），附範例手牌照片（審核員手邊不一定有麻將）
+- ⚠️ 麻將可能被聯想成賭博：說明寫明是「聽牌計算工具，不涉及金錢」，截圖與文字避免籌碼、金額字眼；年齡分級照實填
+
+順序：Mac 編譯＋實機測試 → 付費加入開發者計畫 → 處理 🟡 項目 → TestFlight → 送審
+
 ## Windows 開發環境備忘
 - Flutter 3.50.0 在 `C:\Users\user\develop\flutter`；已開啟 Windows 開發人員模式（plugin 需要）
 - `flutter pub get`／`build` 要在 PowerShell 跑（Git Bash 會誤判沒有 symlink 權限）
