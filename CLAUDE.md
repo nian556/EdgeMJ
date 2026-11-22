@@ -23,7 +23,7 @@
     - `manual_input_page.dart`：手動輸入
 - 模型：`assets/models/edgemj_float16.tflite`（42 類，含 8 張花牌）+ `labels.txt`，已在 git 裡
 - 訓練相關：`ml/`（Python，只在 Windows 用；照片 `tw_mj/` 和資料集不進 git）
-- 測試：`flutter test`（目前 74 項全過）
+- 測試：`flutter test`（目前 79 項全過）
 
 ## 目前進度（2026-11-21）
 - ✅ 拍照辨識版完成；模型已用自拍台灣牌補訓練（台灣牌測試 86.8% → 99.5%）
@@ -32,6 +32,8 @@
   比較結果：台灣牌測試 98.9% → 99.5%、新照片測試 87.3% → 93.0%、原大資料集 mAP50 0.972 → 0.978。
   換掉的舊模型備份在 Windows 本機 `ml/exports_v2_old/`（不進 git）
 - ✅ Windows 桌面版可編譯執行（`flutter build windows`）
+- ✅ 相公提醒（2026-11-23）：手牌（不含花牌）是 3 的倍數張時，拍照頁和即時頁都會跳紅色提醒
+  （`lib/core/vision/hand_filter.dart` 的 `checkHandWarnings`）
 - 🔶 **即時辨識頁** 剛寫好：用 `camera` 套件不停 `takePicture()` → 辨識，連續兩輪一樣才更新結果。
   Windows 電腦沒有鏡頭，所以另有「照片模擬鏡頭」模式。**還沒在真的鏡頭／手機上測過。**
 - 🔶 **iPhone 版**：從沒編譯過。教學在 `docs/iPhone測試教學.docx`。

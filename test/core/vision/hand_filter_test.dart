@@ -124,6 +124,33 @@ void main() {
       expect(w.single, contains('一萬'));
     });
 
+    test('張數是 3 的倍數要提醒相公', () {
+      for (final n in [3, 6, 9, 12, 15]) {
+        final w = checkHandWarnings(handRow(n), handSize: 16);
+        expect(w.single, contains('相公'), reason: '$n 張');
+        expect(w.single, contains('$n 張'));
+      }
+    });
+
+    test('吃碰後的正確張數不提醒相公', () {
+      for (final n in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17]) {
+        expect(checkHandWarnings(handRow(n), handSize: 16), isEmpty, reason: '$n 張');
+      }
+    });
+
+    test('香港牌 12 張也要提醒相公', () {
+      expect(checkHandWarnings(handRow(12), handSize: 13).single, contains('相公'));
+    });
+
+    test('沒認到牌不提醒相公', () {
+      expect(checkHandWarnings([], handSize: 16), isEmpty);
+    });
+
+    test('超過上限只提醒一次，不重複提醒相公', () {
+      final w = checkHandWarnings(handRow(18), handSize: 16);
+      expect(w.single, isNot(contains('相公')));
+    });
+
     test('花牌不算進張數', () {
       final flowers = [for (var i = 0; i < 8; i++) tile(i * 42.0, 0, cls: 34 + i)];
       expect(checkHandWarnings([...handRow(16), ...flowers], handSize: 16), isEmpty);

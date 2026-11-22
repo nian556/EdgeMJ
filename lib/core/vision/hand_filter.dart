@@ -170,6 +170,12 @@ List<String> checkHandWarnings(List<Detection> detections, {required int handSiz
   if (tiles.length > maxTiles) {
     warnings.add('認到 ${tiles.length} 張，超過 $maxTiles 張，可能把其他牌也算進來了，'
         '請縮小框或調整角度');
+  } else if (tiles.isNotEmpty && tiles.length % 3 == 0) {
+    // 相公檢查：每吃碰槓一組手牌少 3 張（槓完會補牌，張數一樣），
+    // 所以正確張數一定是「3 的倍數 +1」（等摸牌）或「+2」（剛摸牌）。
+    // 剛好是 3 的倍數（3、6、9、12、15…）就一定多一張或少一張。
+    warnings.add('手牌 ${tiles.length} 張，可能相公（多一張或少一張）。'
+        '也可能有牌沒認到或多認了，請檢查一下');
   }
 
   // 同一種牌最多 4 張，超過一定有認錯
