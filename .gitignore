@@ -45,3 +45,6 @@ ml/exports/
 calibration_image_sample_data_*.npy
 # Word／Office 開檔時產生的暫存檔
 ~$*
+
+# Claude Code 專案筆記（只放本機，不上傳）
+CLAUDE.md
